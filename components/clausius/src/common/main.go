@@ -58,7 +58,7 @@ func (store Store) GetGrid(nb_rows int, nb_cols int) (map[string]int, error) {
 	var err error
 	for y := 0; y < nb_rows; y++ {
 		for x := 0; x < nb_cols; x++ {
-			m[build_key(x, y)], err = store.GetOrSetCell(x, y)
+			m[BuildKey(x, y)], err = store.GetOrSetCell(x, y)
 			if err != nil {
 				return m, err
 			}
@@ -79,8 +79,18 @@ func (store Store) GetOrSetCell(x int, y int) (int, error) {
 	return got, getErr
 }
 
+// TODO: write the test
+func (store Store) revertState(x int, y int) error {
+	state, err := store.GetCell(x, y)
+	if err != nil {
+		return err
+	}
+	otherState := 1 - state
+	return store.SetCell(x, y, otherState)
+}
+
 func (store Store) GetCell(x int, y int) (int, error) {
-	key := build_key(x, y)
+	key := BuildKey(x, y)
 	value, err := store.Get(key)
 	if err != nil {
 		return 0, err
@@ -89,10 +99,10 @@ func (store Store) GetCell(x int, y int) (int, error) {
 }
 
 func (store Store) SetCell(x int, y int, v int) error {
-	key := build_key(x, y)
+	key := BuildKey(x, y)
 	return store.Set(key, v, 0)
 }
 
-func build_key(x int, y int) string {
+func BuildKey(x int, y int) string {
 	return fmt.Sprintf("x:%v,y:%v", x, y)
 }
