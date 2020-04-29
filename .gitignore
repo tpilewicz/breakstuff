@@ -1,5 +1,6 @@
 # Binaries
 main
+*.zip
 
 #terraform
 *.tfstate
