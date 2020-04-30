@@ -32,6 +32,9 @@ module "get_grid" {
   funes_subnets = var.funes_subnets
   funes_sg_id   = var.funes_sg_id
   funes_url     = var.funes_url
+
+  nb_rows = local.nb_rows
+  nb_cols = local.nb_cols
 }
 
 module "set_cell" {
@@ -47,4 +50,7 @@ module "set_cell" {
   funes_subnets = var.funes_subnets
   funes_sg_id   = var.funes_sg_id
   funes_url     = var.funes_url
+
+  nb_rows = local.nb_rows
+  nb_cols = local.nb_cols
 }
