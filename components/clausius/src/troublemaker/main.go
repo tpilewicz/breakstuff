@@ -3,6 +3,7 @@ package main
 import (
 	"clausius/common"
 	"context"
+	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"math/rand"
@@ -17,16 +18,33 @@ func handler(ctx context.Context, event events.CloudWatchEvent) {
 	if err != nil {
 		panic(err)
 	}
-	//TODO: create a Cell type, that has an x and a y, and rather generate a slice of this
+
 	cellsToClick := randomCellsToClick(nbRows, nbCols)
+
+	store, err := common.ConnectToFunes()
+	if err != nil {
+		panic(err)
+	}
+
+	errors := []error{}
+	for _, c := range cellsToClick {
+		errors = append(errors, store.RevertState(c.X, c.Y))
+	}
+	nbErrors := len(errors)
+	if nbErrors > 0 {
+		for _, err = range errors {
+			fmt.Println(err)
+		}
+		panic(fmt.Errorf("That's %v errors. Not cool.", nbErrors))
+	}
 }
 
 // Chooses randomly between 1 and 10 cells to click, returns their keys. Note that a key may be repeated in the returned slice.
-func randomCellsToClick(nbRows int, nbCols int) []string {
+func randomCellsToClick(nbRows int, nbCols int) []common.Cell {
 	nbCellsToClick := sample([]float32{1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 3 / 4, 7 / 8, 15 / 16, 31 / 32, 1}) + 1
-	cellsToClick := []string{}
+	cellsToClick := []common.Cell{}
 	for i := 0; i < nbCellsToClick; i++ {
-		cellsToClick = append(cellsToClick, randomKey(nbRows, nbCols))
+		cellsToClick = append(cellsToClick, randomCell(nbRows, nbCols))
 	}
 	return cellsToClick
 }
@@ -42,8 +60,8 @@ func sample(cdf []float32) int {
 	return bucket
 }
 
-func randomKey(nbRows int, nbCols int) string {
+func randomCell(nbRows int, nbCols int) common.Cell {
 	x := rand.Intn(nbCols)
 	y := rand.Intn(nbRows)
-	return common.BuildKey(x, y)
+	return common.Cell{X: x, Y: y}
 }

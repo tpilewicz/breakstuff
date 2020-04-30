@@ -1,7 +1,6 @@
 package main
 
 import (
-	"clausius/common"
 	"fmt"
 	"testing"
 )
@@ -15,9 +14,9 @@ func TestRandomCellsToClick(t *testing.T) {
 	if nbCells < 1 || nbCells > 10 {
 		t.Fatal(fmt.Errorf("We need between 1 and 10 cells to click. Got %v", nbCells))
 	}
-	for _, k := range cellsToClick {
-		if !isKey(k, nbRows, nbCols) {
-			t.Fatal(fmt.Errorf("Woop, seems we generated a key that isn't one: %v. nbRows: %v, nbCols: %v", k, nbRows, nbCols))
+	for _, c := range cellsToClick {
+		if !c.IsValid(nbRows, nbCols) {
+			t.Fatal(fmt.Errorf("Woop, seems we generated a cell that isn't valid: %v. nbRows: %v, nbCols: %v", c, nbRows, nbCols))
 		}
 	}
 }
@@ -29,24 +28,12 @@ func TestSample(t *testing.T) {
 	}
 }
 
-func TestRandomKey(t *testing.T) {
+func TestRandomCell(t *testing.T) {
 	nbRows := 10
 	nbCols := 5
-	k := randomKey(nbRows, nbCols)
+	c := randomCell(nbRows, nbCols)
 
-	if !isKey(k, nbRows, nbCols) {
-		t.Fatal(fmt.Errorf("%v is not an acceptable key. nbCols: %v, nbRows: %v", k, nbCols, nbRows))
+	if !c.IsValid(nbRows, nbCols) {
+		t.Fatal(fmt.Errorf("%v is not a valid cell. nbRows: %v, nbCols: %v", c, nbRows, nbCols))
 	}
-}
-
-func isKey(k string, nbRows int, nbCols int) bool {
-	found_key := false
-	for y := 0; y < nbRows; y++ {
-		for x := 0; x < nbCols; x++ {
-			if common.BuildKey(x, y) == k {
-				found_key = true
-			}
-		}
-	}
-	return found_key
 }

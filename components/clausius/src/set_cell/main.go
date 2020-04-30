@@ -9,6 +9,10 @@ import (
 	"strconv"
 )
 
+func main() {
+	lambda.Start(handle)
+}
+
 func handle(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	nbRows, nbCols, err := common.GetGridSize()
 	if err != nil {
@@ -69,8 +73,4 @@ func convertParams(xStr string, yStr string, vStr string, nbRows int, nbCols int
 	}
 
 	return x, y, v, nil
-}
-
-func main() {
-	lambda.Start(handle)
 }

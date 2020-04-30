@@ -11,6 +11,36 @@ import (
 	"time"
 )
 
+func TestIsValid(t *testing.T) {
+	nbRows := 5
+	nbCols := 10
+
+	c := Cell{X: 0, Y: 3}
+	if !c.IsValid(nbRows, nbCols) {
+		t.Fatal(fmt.Errorf("%v should be a valid cell.", c))
+	}
+
+	c = Cell{X: -1, Y: 3}
+	if c.IsValid(nbRows, nbCols) {
+		t.Fatal(fmt.Errorf("%v should NOT be a valid cell.", c))
+	}
+
+	c = Cell{X: 0, Y: -1}
+	if c.IsValid(nbRows, nbCols) {
+		t.Fatal(fmt.Errorf("%v should NOT be a valid cell.", c))
+	}
+
+	c = Cell{X: 10, Y: 3}
+	if c.IsValid(nbRows, nbCols) {
+		t.Fatal(fmt.Errorf("%v should NOT be a valid cell.", c))
+	}
+
+	c = Cell{X: 2, Y: 5}
+	if c.IsValid(nbRows, nbCols) {
+		t.Fatal(fmt.Errorf("%v should NOT be a valid cell.", c))
+	}
+}
+
 func TestGetGridSize(t *testing.T) {
 	os.Setenv("NB_ROWS", "10")
 	os.Setenv("NB_COLS", "15")
@@ -183,4 +213,28 @@ func TestBuildKey(t *testing.T) {
 	if got != want {
 		t.Fatal(fmt.Errorf("got: %v, want: %v", got, want))
 	}
+}
+
+func TestRevertState(t *testing.T) {
+	mockModifier := &MockStoreModifier{}
+	store := Store{mockModifier}
+
+	x := 2
+	y := 10
+
+	mockModifier.On("Get", BuildKey(x, y)).Return("0", nil).Once()
+	mockModifier.On("Set", BuildKey(x, y), 1, time.Duration(0)).Return(nil).Once()
+	err := store.RevertState(x, y)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mockModifier.On("Get", BuildKey(x, y)).Return("1", nil).Once()
+	mockModifier.On("Set", BuildKey(x, y), 0, time.Duration(0)).Return(nil).Once()
+	err = store.RevertState(x, y)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mockModifier.AssertExpectations(t)
 }

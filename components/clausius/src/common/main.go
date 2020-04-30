@@ -11,7 +11,7 @@ import (
 const defaultCellValue = 1
 
 func GetGridSize() (int, int, error) {
-	nb_rows, err := strconv.Atoi(os.Getenv("NB_ROWS"))
+	nbRows, err := strconv.Atoi(os.Getenv("NB_ROWS"))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -19,7 +19,7 @@ func GetGridSize() (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	return nb_rows, nb_cols, nil
+	return nbRows, nb_cols, nil
 }
 
 type Store struct {
@@ -33,6 +33,17 @@ type StoreModifier interface {
 
 type RedisStoreModifier struct {
 	client redis.Client
+}
+
+type Cell struct {
+	X int
+	Y int
+}
+
+func (c Cell) IsValid(nbRows int, nbCols int) bool {
+	validX := 0 <= c.X && c.X < nbCols
+	validY := 0 <= c.Y && c.Y < nbRows
+	return validX && validY
 }
 
 func (modifier RedisStoreModifier) Get(key string) (string, error) {
@@ -53,10 +64,10 @@ func ConnectToFunes() (Store, error) {
 	}, nil
 }
 
-func (store Store) GetGrid(nb_rows int, nb_cols int) (map[string]int, error) {
+func (store Store) GetGrid(nbRows int, nb_cols int) (map[string]int, error) {
 	m := make(map[string]int)
 	var err error
-	for y := 0; y < nb_rows; y++ {
+	for y := 0; y < nbRows; y++ {
 		for x := 0; x < nb_cols; x++ {
 			m[BuildKey(x, y)], err = store.GetOrSetCell(x, y)
 			if err != nil {
@@ -80,7 +91,7 @@ func (store Store) GetOrSetCell(x int, y int) (int, error) {
 }
 
 // TODO: write the test
-func (store Store) revertState(x int, y int) error {
+func (store Store) RevertState(x int, y int) error {
 	state, err := store.GetCell(x, y)
 	if err != nil {
 		return err
