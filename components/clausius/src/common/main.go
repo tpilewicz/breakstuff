@@ -90,7 +90,7 @@ func (store Store) GetOrSetCell(x int, y int) (int, error) {
 	return got, getErr
 }
 
-// TODO: write the test
+// TODO: use Redis eval to have an isolable operation
 func (store Store) RevertState(x int, y int) error {
 	state, err := store.GetCell(x, y)
 	if err != nil {
