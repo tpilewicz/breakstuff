@@ -38,6 +38,8 @@
                 img.style = `grid-column: $${x + 1}; grid-row: $${y + 1};`
                 img.src = images[currentState]
 
+                img.recentlyClicked = false
+
                 grid.appendChild(img)
             }
         }
@@ -51,10 +53,12 @@
                 img = document.getElementById(key)
 
                 currentState = j[key]
-                if (img.currentState != currentState) {
+                if (img.currentState != currentState && !img.recentlyClicked) {
                     img.currentState = currentState
                     img.src = images[currentState]
                 }
+
+                img.recentlyClicked = false
             }
         }
     }
@@ -66,7 +70,7 @@
         otherState = 1 - currentState
         img.src = images[otherState]
         img.currentState = otherState
-        // console.log(`https://5zvhlq0i2j.execute-api.eu-central-1.amazonaws.com/v1/set_cell?x=$${x}&y=$${y}&v=$${otherState}`)
+        img.recentlyClicked = true
         fetch(
             `$${setCellUrl}?x=$${x}&y=$${y}&v=$${otherState}`,
             {method: 'POST'})
