@@ -51,8 +51,10 @@
                 img = document.getElementById(key)
 
                 currentState = j[key]
-                img.currentState = currentState
-                img.src = images[currentState]
+                if (img.currentState != currentState) {
+                    img.currentState = currentState
+                    img.src = images[currentState]
+                }
             }
         }
     }
