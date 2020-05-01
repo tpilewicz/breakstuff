@@ -8,8 +8,8 @@ locals {
 
   index_template = "index_template.html"
   css_file = "style.css"
-  ok_file = "ok.png"
-  broken_file = "broken.png"
+  ok_file = "ok.gif"
+  broken_file = "broken.gif"
 
   rendered_index = templatefile(
     "../../components/show/assets/${local.index_template}",
