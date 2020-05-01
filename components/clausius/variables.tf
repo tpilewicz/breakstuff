@@ -3,7 +3,7 @@ locals {
   default_name = "${var.environment}-${local.component}"
 
   troublemaker_name = "${local.default_name}-troublemaker"
-  troublemaker_src = "./src/troublemaker/main"
+  troublemaker_src = "../../components/clausius/src/troublemaker/main"
 
   nb_rows = 20
   nb_cols = 20
