@@ -24,6 +24,8 @@ func handler(ctx context.Context, event events.CloudWatchEvent) {
 
 	rand.Seed(time.Now().UnixNano())
 	cellsToClick := randomCellsToClick(nbRows, nbCols)
+	nbCellsToClick := len(cellsToClick)
+	fmt.Printf("Clicking %v cells", nbCellsToClick)
 
 	store, err := common.ConnectToFunes()
 	if err != nil {
@@ -32,14 +34,17 @@ func handler(ctx context.Context, event events.CloudWatchEvent) {
 
 	errors := []error{}
 	for _, c := range cellsToClick {
-		errors = append(errors, store.RevertState(c.X, c.Y))
+		err = store.RevertState(c.X, c.Y)
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
 	nbErrors := len(errors)
 	if nbErrors > 0 {
 		for _, err = range errors {
 			fmt.Println(err)
 		}
-		panic(fmt.Errorf("That's %v errors. Not cool.", nbErrors))
+		panic(fmt.Errorf("That's %v errors, out of %v clicked cells. Not cool.", nbErrors, nbCellsToClick))
 	}
 }
 
