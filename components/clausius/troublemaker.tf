@@ -1,6 +1,6 @@
 data "archive_file" "troublemaker" {
   source_file = local.troublemaker_src
-  output_path = "${local.troublemaker}.zip"
+  output_path = "${local.troublemaker_src}.zip"
   type        = "zip"
 }
 
