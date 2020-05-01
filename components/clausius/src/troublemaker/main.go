@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"math/rand"
+	"time"
 )
 
 var nBCellsCDF = []float32{1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 3 / 4, 7 / 8, 15 / 16, 31 / 32, 1}
@@ -21,6 +22,7 @@ func handler(ctx context.Context, event events.CloudWatchEvent) {
 		panic(err)
 	}
 
+	rand.Seed(time.Now().UnixNano())
 	cellsToClick := randomCellsToClick(nbRows, nbCols)
 
 	store, err := common.ConnectToFunes()
@@ -54,7 +56,6 @@ func randomCellsToClick(nbRows int, nbCols int) []common.Cell {
 // Returns a random int i, with i >= 0 and i < cdf.length, using cdf as the cumulative distribution function.
 func sample(cdf []float32) int {
 	r := rand.Float32()
-
 	bucket := 0
 	for r > cdf[bucket] {
 		bucket++
