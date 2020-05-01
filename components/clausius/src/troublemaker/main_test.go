@@ -8,10 +8,11 @@ import (
 func TestRandomCellsToClick(t *testing.T) {
 	nbRows := 10
 	nbCols := 5
-	cellsToClick := randomCellsToClick(nbRows, nbCols)
+	nbCellsCDF := []float32{0.2, 0.5, 0.6, 0.8, 0.95, 1}
+	cellsToClick := randomCellsToClick(nbRows, nbCols, nbCellsCDF)
 
 	nbCells := len(cellsToClick)
-	if nbCells < 1 || nbCells > 10 {
+	if nbCells < 1 || nbCells > 6 {
 		t.Fatal(fmt.Errorf("We need between 1 and 10 cells to click. Got %v", nbCells))
 	}
 	for _, c := range cellsToClick {
