@@ -2,6 +2,7 @@ locals {
   component    = "clausius"
   default_name = "${var.environment}-${local.component}"
 
+  troublemaker_name = "${local.default_name}-troublemaker"
   troublemaker_src = "./src/troublemaker/main"
 
   nb_rows = 20

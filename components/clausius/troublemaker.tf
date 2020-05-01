@@ -5,7 +5,7 @@ data "archive_file" "troublemaker" {
 }
 
 resource "aws_lambda_function" "troublemaker" {
-  function_name    = "${local.default_name}-troublemaker"
+  function_name    = local.troublemaker_name
   filename         = data.archive_file.troublemaker.output_path
   handler          = "main"
   source_code_hash = data.archive_file.troublemaker.output_base64sha256
@@ -18,9 +18,15 @@ resource "aws_lambda_function" "troublemaker" {
 
   tags = local.tags
 
+  vpc_config {
+    subnet_ids         = var.funes_subnets
+    security_group_ids = [aws_security_group.troublemaker.id]
+  }
+
   environment {
     variables = {
       ENVIRONMENT = var.environment
+      FUNES_URL   = var.funes_url
       NB_ROWS     = local.nb_rows
       NB_COLS     = local.nb_cols
 
@@ -28,3 +34,64 @@ resource "aws_lambda_function" "troublemaker" {
     }
   }
 }
+
+resource "aws_iam_role" "troublemaker" {
+  name = local.troublemaker_name
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Effect": "Allow"
+    }
+  ]
+}
+EOF
+
+  tags = local.tags
+}
+
+resource "aws_cloudwatch_log_group" "troublemaker" {
+  name              = "/aws/lambda/${local.troublemaker_name}"
+  retention_in_days = "14"
+  tags              = local.tags
+}
+
+resource "aws_iam_role_policy_attachment" "troublemaker_execution" {
+  role       = aws_iam_role.troublemaker.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "troublemaker_vpc" {
+  role       = aws_iam_role.troublemaker.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_security_group" "troublemaker" {
+  name   = local.troublemaker_name
+  vpc_id = var.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = local.tags
+}
+
+resource "aws_security_group_rule" "allow_troublemaker" {
+  type                     = "ingress"
+  from_port                = 6379
+  to_port                  = 6379
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.troublemaker.id
+  security_group_id        = var.funes_sg_id
+}
+
+// TODO: Add a Cloudwatch event trigger
