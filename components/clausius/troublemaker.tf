@@ -30,7 +30,7 @@ resource "aws_lambda_function" "troublemaker" {
       NB_ROWS     = local.nb_rows
       NB_COLS     = local.nb_cols
 
-      SRC_HASH = filebase64sha256(local.troublemaker)
+      SRC_HASH = filebase64sha256(local.troublemaker_src)
     }
   }
 }
