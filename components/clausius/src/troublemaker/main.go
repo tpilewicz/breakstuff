@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var nBCellsCDF = []float32{1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 3 / 4, 7 / 8, 15 / 16, 31 / 32, 1}
+var nBCellsCDF = []float32{1.0 / 32.0, 1.0 / 16.0, 1.0 / 8.0, 1.0 / 4.0, 1.0 / 2.0, 3.0 / 4.0, 7.0 / 8.0, 15.0 / 16.0, 31.0 / 32.0, 1.0}
 
 func main() {
 	lambda.Start(handler)
