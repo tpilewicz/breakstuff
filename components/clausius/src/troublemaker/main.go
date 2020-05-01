@@ -9,6 +9,8 @@ import (
 	"math/rand"
 )
 
+var nBCellsCDF = []float32{1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 3 / 4, 7 / 8, 15 / 16, 31 / 32, 1}
+
 func main() {
 	lambda.Start(handler)
 }
@@ -39,9 +41,9 @@ func handler(ctx context.Context, event events.CloudWatchEvent) {
 	}
 }
 
-// Chooses randomly between 1 and 10 cells to click, returns their keys. Note that a key may be repeated in the returned slice.
+// Chooses randomly between 1 and len(nBCellsCDF) cells to click, returns their keys. Note that a key may be repeated in the returned slice.
 func randomCellsToClick(nbRows int, nbCols int) []common.Cell {
-	nbCellsToClick := sample([]float32{1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 3 / 4, 7 / 8, 15 / 16, 31 / 32, 1}) + 1
+	nbCellsToClick := sample(nBCellsCDF) + 1 // We want at least one cell
 	cellsToClick := []common.Cell{}
 	for i := 0; i < nbCellsToClick; i++ {
 		cellsToClick = append(cellsToClick, randomCell(nbRows, nbCols))
