@@ -15,8 +15,8 @@
         <img src="0.gif">
     </picture>
     <picture id="changing_img">
-        <source id="zero" srcset="0.gif" media="(min-width: 1px)">
-        <source id="one" srcset="1.gif" media="(max-width: 1px)">
+        <source id="zero" class="zero" srcset="0.gif" media="(min-width: 1px)">
+        <source id="one" class="one" srcset="1.gif" media="(max-width: 1px)">
         <img src="0.gif">
     </picture>
 </body>
@@ -31,9 +31,7 @@
 
     function changeImg(event) {
         img = event.currentTarget
-        console.log(img)
         newState = 1 - img.currentState
-        console.log(img.currentState)
 
         if (newState == 0) {
           wantImg = zero
