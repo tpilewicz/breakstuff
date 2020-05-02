@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>My title</title>
+</head>
+<body>
+    <img src="0.gif">
+    <img src="1.gif">
+    <img id="changing_img" src="0.gif">
+</body>
+<script>
+    changing_img = document.getElementById("changing_img")
+    changing_img.onclick = changeImg
+    changing_img.currentState = 0
+
+    function changeImg(event) {
+        img = event.target
+        newState = 1 - img.currentState
+        img.currentState = newState
+        img.src = `${newState}.gif`
+    }
+</script>
