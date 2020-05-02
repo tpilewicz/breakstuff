@@ -11,10 +11,6 @@
 <script>
     gridDiv = document.getElementById("grid")
 
-    ok = "/Users/pilewicz/Downloads/fixed_broken_bis.gif"
-    broken = "/Users/pilewicz/Downloads/ok.gif"
-    images = [ok, broken]
-
     // production
     setCellUrl = "https://br0vxymk66.execute-api.eu-central-1.amazonaws.com/v1/set_cell"
     getGridUrl = "https://br0vxymk66.execute-api.eu-central-1.amazonaws.com/v1/get_grid"
@@ -26,52 +22,79 @@
         gridDiv.style["grid-template-rows"] = `repeat(${nb_rows}, ${100/nb_rows}%)`
         for (x = 0; x < nb_cols; x++) {
             for (y = 0; y < nb_rows; y++) {
-                img = document.createElement("img")
+                picture = document.createElement("picture")
                 key = `x:${x},y:${y}`
-                img.id = key
-                img.clausiusX = x
-                img.clausiusY = y
+                picture.id = key
+                picture.clausiusX = x
+                picture.clausiusY = y
                 currentState = j[key]
-                img.currentState = currentState
-                img.onclick = changeState
+                picture.currentState = currentState
+                picture.onclick = changeState
 
-                img.border = 0
-                img.style = `grid-column: ${x + 1}; grid-row: ${y + 1};`
-                img.src = images[currentState]
+                picture.border = 0
+                picture.style = `grid-column: ${x + 1}; grid-row: ${y + 1};`
 
-                img.recentlyClicked = false
+                ok = document.createElement("source")
+                ok.srcset = "ok.gif"
+                ok.id = `${key}_ok`
+                broken = document.createElement("source")
+                broken.srcset = "broken.gif"
+                broken.id = `${key}_broken`
+                img = document.createElement("img")
+                img.src = "ok.gif"
 
-                grid.appendChild(img)
+                picture.appendChild(ok)
+                picture.appendChild(broken)
+                picture.appendChild(img)
+                grid.appendChild(picture)
+
+                setImg(picture)
+
+                picture.recentlyClicked = false
             }
         }
     }
+
+    function setImg(picture) {
+        key = picture.id
+        if (picture.currentState == 0) {
+            desiredSource = document.getElementById(`${key}_ok`)
+            undesiredSource = document.getElementById(`${key}_broken`)
+        } else {
+            desiredSource = document.getElementById(`${key}_broken`)
+            undesiredSource = document.getElementById(`${key}_ok`)
+        }
+        desiredSource.media = "(min-width: 1px)"
+        undesiredSource.media = "(max-width: 1px)"
+    }
+
     function updateGridFromJson(j) {
         nb_rows = j['nb_rows']
         nb_cols = j['nb_cols']
         for (x = 0; x < nb_cols; x++) {
             for (y = 0; y < nb_rows; y++) {
                 key = `x:${x},y:${y}`
-                img = document.getElementById(key)
+                picture = document.getElementById(key)
 
                 currentState = j[key]
-                if (img.currentState != currentState && !img.recentlyClicked) {
-                    img.currentState = currentState
-                    img.src = images[currentState]
+                if (picture.currentState != currentState && !picture.recentlyClicked) {
+                    picture.currentState = currentState
+                    setImg(picture)
                 }
 
-                img.recentlyClicked = false
+                picture.recentlyClicked = false
             }
         }
     }
     function changeState(event) {
-        img = event.target
-        x = img.clausiusX
-        y = img.clausiusY
-        currentState = img.currentState
+        picture = event.currentTarget
+        x = picture.clausiusX
+        y = picture.clausiusY
+        currentState = picture.currentState
         otherState = 1 - currentState
-        img.src = images[otherState]
-        img.currentState = otherState
-        img.recentlyClicked = true
+        picture.currentState = otherState
+        setImg(picture)
+        picture.recentlyClicked = true
         fetch(
             `${setCellUrl}?x=${x}&y=${y}&v=${otherState}`,
             {method: 'POST'})
