@@ -1,6 +1,6 @@
 # OBJECTS
 resource "aws_s3_bucket_object" "index" {
-  bucket = aws_s3_bucket.main.bucket
+  bucket = aws_s3_bucket.subdomain.bucket
   key    = local.index_key
   content = local.rendered_index
   # etag makes the file update when it changes
@@ -9,7 +9,7 @@ resource "aws_s3_bucket_object" "index" {
 }
 
 resource "aws_s3_bucket_object" "css" {
-  bucket = aws_s3_bucket.main.bucket
+  bucket = aws_s3_bucket.subdomain.bucket
   key    = local.css_file
   source = "../../components/show/assets/${local.css_file}"
   # etag makes the file update when it changes
@@ -18,7 +18,7 @@ resource "aws_s3_bucket_object" "css" {
 }
 
 resource "aws_s3_bucket_object" "ok" {
-  bucket = aws_s3_bucket.main.bucket
+  bucket = aws_s3_bucket.subdomain.bucket
   key    = local.ok_file
   source = "../../components/show/assets/${local.ok_file}"
   # etag makes the file update when it changes
@@ -27,7 +27,7 @@ resource "aws_s3_bucket_object" "ok" {
 }
 
 resource "aws_s3_bucket_object" "broken" {
-  bucket = aws_s3_bucket.main.bucket
+  bucket = aws_s3_bucket.subdomain.bucket
   key    = local.broken_file
   source = "../../components/show/assets/${local.broken_file}"
   # etag makes the file update when it changes
