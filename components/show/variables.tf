@@ -29,3 +29,4 @@ variable "api_invoke_url" {}
 variable "get_grid_resource" {}
 variable "set_cell_resource" {}
 variable "refresh_seconds" {}
+variable "domain_name" {}

@@ -13,4 +13,5 @@ module "main" {
 
   environment = local.environment
   refresh_seconds = local.refresh_seconds
+  domain_name = "clausius.xyz"
 }

@@ -35,9 +35,17 @@ resource "aws_s3_bucket_object" "broken" {
   content_type = "image/png"
 }
 
-# BUCKET
-resource "aws_s3_bucket" "main" {
-  bucket = "tpilewicz-${local.default_name}-public"
+# BUCKETS
+resource "aws_s3_bucket" "main_domain" {
+  bucket = var.domain_name
+
+  website {
+    redirect_all_requests_to = "www.${var.domain_name}"
+  }
+}
+
+resource "aws_s3_bucket" "subdomain" {
+  bucket = "www.${var.domain_name}"
 
   website {
     index_document = "index.html"
@@ -45,12 +53,12 @@ resource "aws_s3_bucket" "main" {
   }
 }
 
-resource "aws_s3_bucket_policy" "main" {
-  bucket = aws_s3_bucket.main.id
-  policy = data.aws_iam_policy_document.main.json
+resource "aws_s3_bucket_policy" "subdomain" {
+  bucket = aws_s3_bucket.subdomain.id
+  policy = data.aws_iam_policy_document.subdomain.json
 }
 
-data "aws_iam_policy_document" "main" {
+data "aws_iam_policy_document" "subdomain" {
   version = "2012-10-17"
   statement {
     effect =  "Allow"
@@ -59,6 +67,6 @@ data "aws_iam_policy_document" "main" {
         identifiers = ["*"]
     }
     actions = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.main.arn}/*"]
+    resources = ["${aws_s3_bucket.subdomain.arn}/*"]
   }
 }
