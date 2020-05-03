@@ -40,12 +40,12 @@ resource "aws_s3_bucket" "main_domain" {
   bucket = var.domain_name
 
   website {
-    redirect_all_requests_to = "www.${var.domain_name}"
+    redirect_all_requests_to = local.subdomain_name
   }
 }
 
 resource "aws_s3_bucket" "subdomain" {
-  bucket = "www.${var.domain_name}"
+  bucket = local.subdomain_name
 
   website {
     index_document = "index.html"
@@ -68,5 +68,35 @@ data "aws_iam_policy_document" "subdomain" {
     }
     actions = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.subdomain.arn}/*"]
+  }
+}
+
+# ROUTE53
+
+resource "aws_route53_zone" "main" {
+  name = var.domain_name
+}
+
+resource "aws_route53_record" "main_domain" {
+  zone_id = "${aws_route53_zone.main.zone_id}"
+  name = var.domain_name
+  type = "A"
+
+  alias {
+    name = aws_s3_bucket.main_domain.website_domain
+    zone_id = aws_s3_bucket.main_domain.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "subdomain" {
+  zone_id = "${aws_route53_zone.main.zone_id}"
+  name = local.subdomain_name
+  type = "A"
+
+  alias {
+    name = aws_s3_bucket.subdomain.website_domain
+    zone_id = aws_s3_bucket.subdomain.hosted_zone_id
+    evaluate_target_health = false
   }
 }

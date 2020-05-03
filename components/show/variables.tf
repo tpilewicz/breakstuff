@@ -21,6 +21,8 @@ locals {
     }
   )
   index_key = "index.html"
+
+  subdomain_name = "www.${var.domain_name}"
 }
 
 variable "environment" {}
