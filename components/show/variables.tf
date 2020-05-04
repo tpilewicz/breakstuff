@@ -10,6 +10,7 @@ locals {
   css_file = "style.css"
   ok_file = "ok.gif"
   broken_file = "broken.gif"
+  favicon_file = "favicon.png"
 
   rendered_index = templatefile(
     "../../components/show/assets/${local.index_template}",

@@ -2,7 +2,10 @@
 main
 *.zip
 
-#terraform
+# terraform
 *.tfstate
 *.tfstate.backup
 *.terraform
+
+# system
+.DS_Store

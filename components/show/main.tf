@@ -23,7 +23,7 @@ resource "aws_s3_bucket_object" "ok" {
   source = "../../components/show/assets/${local.ok_file}"
   # etag makes the file update when it changes
   etag   = filemd5("../../components/show/assets/${local.ok_file}")
-  content_type = "image/png"
+  content_type = "image/gif"
 }
 
 resource "aws_s3_bucket_object" "broken" {
@@ -32,6 +32,15 @@ resource "aws_s3_bucket_object" "broken" {
   source = "../../components/show/assets/${local.broken_file}"
   # etag makes the file update when it changes
   etag   = filemd5("../../components/show/assets/${local.broken_file}")
+  content_type = "image/gif"
+}
+
+resource "aws_s3_bucket_object" "favicon" {
+  bucket = aws_s3_bucket.subdomain.bucket
+  key    = local.favicon_file
+  source = "../../components/show/assets/${local.favicon_file}"
+  # etag makes the file update when it changes
+  etag   = filemd5("../../components/show/assets/${local.favicon_file}")
   content_type = "image/png"
 }
 
