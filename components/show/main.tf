@@ -44,6 +44,24 @@ resource "aws_s3_bucket_object" "favicon" {
   content_type = "image/png"
 }
 
+resource "aws_s3_bucket_object" "about" {
+  bucket = aws_s3_bucket.subdomain.bucket
+  key    = local.about_file
+  source = "../../components/show/assets/${local.about_file}"
+  # etag makes the file update when it changes
+  etag   = filemd5("../../components/show/assets/${local.about_file}")
+  content_type = "text/html"
+}
+
+resource "aws_s3_bucket_object" "about_css" {
+  bucket = aws_s3_bucket.subdomain.bucket
+  key    = local.about_css_file
+  source = "../../components/show/assets/${local.about_css_file}"
+  # etag makes the file update when it changes
+  etag   = filemd5("../../components/show/assets/${local.about_css_file}")
+  content_type = "text/css"
+}
+
 # BUCKETS
 resource "aws_s3_bucket" "main_domain" {
   bucket = var.domain_name
