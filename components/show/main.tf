@@ -78,7 +78,7 @@ resource "aws_route53_zone" "main" {
 }
 
 resource "aws_route53_record" "main_domain" {
-  zone_id = "${aws_route53_zone.main.zone_id}"
+  zone_id = aws_route53_zone.main.zone_id
   name = var.domain_name
   type = "A"
 
@@ -90,7 +90,7 @@ resource "aws_route53_record" "main_domain" {
 }
 
 resource "aws_route53_record" "subdomain" {
-  zone_id = "${aws_route53_zone.main.zone_id}"
+  zone_id = aws_route53_zone.main.zone_id
   name = local.subdomain_name
   type = "A"
 
