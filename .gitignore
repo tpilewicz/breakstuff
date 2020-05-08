@@ -9,3 +9,6 @@ main
 
 # system
 .DS_Store
+
+# Local dev
+*.ipynb
