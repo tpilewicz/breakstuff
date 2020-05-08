@@ -14,6 +14,18 @@ locals {
   about_file = "about.html"
   about_css_file = "about_style.css"
 
+  ok_frame_names = [
+      for i in range(var.nb_ok_frames):
+      "frames/ok/ok_${i}.png"
+    ]
+  broken_frame_names = [
+    for i in range(var.nb_broken_frames):
+    "frames/broken/broken_${i}.png"
+  ]
+  frame_names = toset(
+    concat(local.ok_frame_names, local.broken_frame_names)
+  )
+
   rendered_index = templatefile(
     "../../components/show/assets/${local.index_template}",
     {
@@ -35,3 +47,5 @@ variable "get_grid_resource" {}
 variable "set_cell_resource" {}
 variable "refresh_seconds" {}
 variable "domain_name" {}
+variable "nb_ok_frames" {}
+variable "nb_broken_frames" {}
