@@ -6,109 +6,144 @@
     <link rel="shortcut icon" type="image/png" href="favicon.png"/>
 </head>
 <body>
-    <div id="grid">
-    </div>
+    <canvas id="canvas"></canvas>
 </body>
 <script>
-    gridDiv = document.getElementById("grid")
-
+    // Terraform templating
     setCellUrl = "${api_invoke_url}/${set_cell_resource}"
     getGridUrl = "${api_invoke_url}/${get_grid_resource}"
+    refresh_seconds = ${refresh_seconds}
 
-    function buildGridFromJson(j) {
-        nb_rows = j['nb_rows']
-        nb_cols = j['nb_cols']
-        gridDiv.style["grid-template-columns"] = `repeat($${nb_cols}, $${100/nb_cols}%)`
-        gridDiv.style["grid-template-rows"] = `repeat($${nb_rows}, $${100/nb_rows}%)`
-        for (x = 0; x < nb_cols; x++) {
-            for (y = 0; y < nb_rows; y++) {
-                picture = document.createElement("picture")
-                key = `x:$${x},y:$${y}`
-                picture.id = key
-                picture.clausiusX = x
-                picture.clausiusY = y
-                currentState = j[key]
-                picture.currentState = currentState
-                picture.onclick = changeState
+    recentlyClicked = []
 
-                picture.border = 0
-                picture.style = `grid-column: $${x + 1}; grid-row: $${y + 1};`
+    canvas = document.getElementById("canvas")
+    context = canvas.getContext('2d')
 
-                ok = document.createElement("source")
-                ok.srcset = "ok.gif"
-                ok.id = `$${key}_ok`
-                broken = document.createElement("source")
-                broken.srcset = "broken.gif"
-                broken.id = `$${key}_broken`
-                img = document.createElement("img")
-                img.src = "ok.gif"
+    function adaptCanvasSize() {
+        if (context.canvas.width != window.innerWidth || context.canvas.height != window.innerHeight) {
+            context.canvas.width = window.innerWidth
+            context.canvas.height = window.innerHeight
+        }
+    }
+    adaptCanvasSize()
 
-                picture.appendChild(ok)
-                picture.appendChild(broken)
-                picture.appendChild(img)
-                grid.appendChild(picture)
+    oks = []
+    nbOkFrames = 170
+    for (var i = 0; i < nbOkFrames; i++) {
+        ok_image = new Image()
+        ok_image.src = `frames/ok/ok_$${i}.png`
+        oks.push(ok_image)
+    }
+    brokens = []
+    nbBrokenFrames = 60
+    for (var i = 0; i < nbBrokenFrames; i++) {
+        broken_image = new Image()
+        broken_image.src = `frames/broken/broken_$${i}.png`
+        brokens.push(broken_image)
+    }
 
-                setImg(picture)
+    grid = {}
+    okTimer = 0
+    brokenTimer = 0
 
-                picture.recentlyClicked = false
+    function renderGrid() {
+        if (grid == {}) {
+            return
+        }
+
+        nbRows = grid['nb_rows']
+        nbCols = grid['nb_cols']
+        canvasWidth = context.canvas.width
+        cellWidth = canvasWidth / nbCols
+        canvasHeight = context.canvas.height
+        cellHeight = canvasHeight / nbRows
+
+        for (y = 0; y < nbRows; y++) {
+            for (x = 0; x < nbCols; x++) {
+                key = buildKey(x, y)
+                state = grid[key]
+                images = [oks[okTimer], brokens[brokenTimer]]
+                context.drawImage(images[state], x * cellWidth, y * cellHeight, cellWidth, cellHeight)
             }
         }
-    }
 
-    function setImg(picture) {
-        key = picture.id
-        if (picture.currentState == 0) {
-            desiredSource = document.getElementById(`$${key}_ok`)
-            undesiredSource = document.getElementById(`$${key}_broken`)
-        } else {
-            desiredSource = document.getElementById(`$${key}_broken`)
-            undesiredSource = document.getElementById(`$${key}_ok`)
+        okTimer++
+        brokenTimer++
+        if (okTimer >= nbOkFrames) {
+            okTimer = 0
         }
-        desiredSource.media = "(min-width: 1px)"
-        undesiredSource.media = "(max-width: 1px)"
+        if (brokenTimer >= nbBrokenFrames) {
+            brokenTimer = 0
+        }
     }
 
-    function updateGridFromJson(j) {
-        nb_rows = j['nb_rows']
-        nb_cols = j['nb_cols']
-        for (x = 0; x < nb_cols; x++) {
-            for (y = 0; y < nb_rows; y++) {
-                key = `x:$${x},y:$${y}`
-                picture = document.getElementById(key)
+    function buildKey(x, y) {
+        return `x:$${x},y:$${y}`
+    }
 
-                currentState = j[key]
-                if (picture.currentState != currentState && !picture.recentlyClicked) {
-                    picture.currentState = currentState
-                    setImg(picture)
+    function setGridFromJson(j) {
+        grid['nb_rows'] = j['nb_rows']
+        grid['nb_cols'] = j['nb_cols']
+        nbRows = grid['nb_rows']
+        nbCols = grid['nb_cols']
+        for (y = 0; y < nbRows; y++) {
+            for (x = 0; x < nbCols; x++) {
+                key = buildKey(x, y)
+                if (!recentlyClicked.includes(key)) {
+                    grid[key] = j[key]
                 }
-
-                picture.recentlyClicked = false
             }
         }
+        recentlyClicked = []
     }
-    function changeState(event) {
-        picture = event.currentTarget
-        x = picture.clausiusX
-        y = picture.clausiusY
-        currentState = picture.currentState
+
+    function queryAndUpdateGrid() {
+        fetch(getGridUrl)
+            .then(response => response.json())
+            .then(setGridFromJson)
+    }
+
+    function getCell(pos) {
+        nbRows = grid['nb_rows']
+        nbCols = grid['nb_cols']
+        canvasWidth = context.canvas.width
+        cellWidth = canvasWidth / nbCols
+        canvasHeight = context.canvas.height
+        cellHeight = canvasHeight / nbRows
+
+        x = Math.floor(pos.x / cellWidth)
+        y = Math.floor(pos.y / cellHeight)
+        return {x: x, y: y}
+    }
+
+    function changeState(cell) {
+        x = cell.x
+        y = cell.y
+        key = `x:$${x},y:$${y}`
+        currentState = grid[key]
         otherState = 1 - currentState
-        picture.currentState = otherState
-        setImg(picture)
-        picture.recentlyClicked = true
+        grid[key] = otherState
         fetch(
             `$${setCellUrl}?x=$${x}&y=$${y}&v=$${otherState}`,
             {method: 'POST'})
     }
-    r = fetch(getGridUrl)
-        .then(response => r = response.json())
-        .then(buildGridFromJson)
 
-    function queryAndUpdateGrid() {
-        r = fetch(getGridUrl)
-            .then(response => r = response.json())
-            .then(updateGridFromJson)
-    }
-    window.setInterval(queryAndUpdateGrid, ${refresh_seconds * 1000})
+    canvas.addEventListener(
+        'click',
+        e => {
+            const pos = {
+                x: e.clientX,
+                y: e.clientY
+            }
+            cell = getCell(pos)
+            recentlyClicked.push(buildKey(cell.x, cell.y))
+            changeState(cell)
+        }
+    )
 
+    queryAndUpdateGrid()
+    window.setInterval(queryAndUpdateGrid, refresh_seconds * 1000)
+    window.setInterval(renderGrid, Math.floor(1000/60))
+    window.setInterval(adaptCanvasSize, 500)
 </script>
 </html>
