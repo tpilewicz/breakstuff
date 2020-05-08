@@ -1,5 +1,6 @@
 # Binaries
 main
+!main/
 *.zip
 
 # terraform

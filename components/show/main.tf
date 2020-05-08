@@ -26,6 +26,17 @@ resource "aws_s3_bucket_object" "ok" {
   content_type = "image/gif"
 }
 
+resource "aws_s3_bucket_object" "frame" {
+  for_each = local.frame_names
+
+  bucket = aws_s3_bucket.subdomain.bucket
+  key    = each.value
+  source = "../../components/show/assets/${each.value}"
+  # etag makes the file update when it changes
+  etag   = filemd5("../../components/show/assets/${each.value}")
+  content_type = "image/png"
+}
+
 resource "aws_s3_bucket_object" "broken" {
   bucket = aws_s3_bucket.subdomain.bucket
   key    = local.broken_file
