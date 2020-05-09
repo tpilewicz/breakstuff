@@ -106,9 +106,9 @@
     function getCell(pos) {
         nbRows = grid['nb_rows']
         nbCols = grid['nb_cols']
-        canvasWidth = context.canvas.width
+        canvasWidth = context.canvas.offsetWidth
         cellWidth = canvasWidth / nbCols
-        canvasHeight = context.canvas.height
+        canvasHeight = context.canvas.offsetHeight
         cellHeight = canvasHeight / nbRows
 
         x = Math.floor(pos.x / cellWidth)
