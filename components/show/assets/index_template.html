@@ -128,13 +128,17 @@
             {method: 'POST'})
     }
 
+    function getCursorPosition(e) {
+        const rect = canvas.getBoundingClientRect()
+        const x = event.clientX - rect.left
+        const y = event.clientY - rect.top
+        return {x: x, y: y}
+    }
+
     canvas.addEventListener(
         'click',
         e => {
-            const pos = {
-                x: e.clientX,
-                y: e.clientY
-            }
+            const pos = getCursorPosition(e)
             cell = getCell(pos)
             recentlyClicked.push(buildKey(cell.x, cell.y))
             changeState(cell)
