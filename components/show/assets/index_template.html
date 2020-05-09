@@ -20,9 +20,9 @@
     context = canvas.getContext('2d')
 
     function adaptCanvasSize() {
-        if (context.canvas.width != window.innerWidth || context.canvas.height != window.innerHeight) {
-            context.canvas.width = window.innerWidth
-            context.canvas.height = window.innerHeight
+        if (context.canvas.width != document.documentElement.clientWidth || context.canvas.height != document.documentElement.clientHeight) {
+            context.canvas.width = document.documentElement.clientWidth
+            context.canvas.height = document.documentElement.clientHeight
         }
     }
     adaptCanvasSize()
