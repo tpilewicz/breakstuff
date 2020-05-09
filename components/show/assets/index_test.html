@@ -144,8 +144,6 @@
     queryAndUpdateGrid()
     window.setInterval(queryAndUpdateGrid, refresh_seconds * 1000)
     window.setInterval(renderGrid, Math.floor(1000/60))
-    if (/Mobi|Android/i.test(navigator.userAgent)) {
-        window.setInterval(adaptCanvasSize, 500)
-    }
+    window.setInterval(adaptCanvasSize, 500)
 </script>
 </html>
