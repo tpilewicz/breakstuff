@@ -93,27 +93,3 @@ resource "aws_security_group_rule" "allow_troublemaker" {
   source_security_group_id = aws_security_group.troublemaker.id
   security_group_id        = var.funes_sg_id
 }
-
-## Trigger every minute
-
-resource "aws_cloudwatch_event_rule" "troublemaker" {
-  name                = "${local.troublemaker_name}-one-minute"
-  schedule_expression = "rate(1 minute)"
-  description         = "Fires every minute"
-
-  tags = local.tags
-}
-
-resource "aws_cloudwatch_event_target" "troublemaker" {
-  rule      = aws_cloudwatch_event_rule.troublemaker.name
-  target_id = "${local.troublemaker_name}-target"
-  arn       = aws_lambda_function.troublemaker.arn
-}
-
-resource "aws_lambda_permission" "permission" {
-  statement_id  = "AllowExecutionFromCloudWatch"
-  action        = "lambda:InvokeFunction"
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.troublemaker.arn
-  function_name = aws_lambda_function.troublemaker.arn
-}
