@@ -9,7 +9,7 @@ module "funes" {
   source = "../components/funes"
 
   environment       = var.environment
-  node_type         = "cache.t2.micro"
+  node_type         = "cache.t3.micro"
   node_count        = 1
   vpc_id            = aws_vpc.main.id
   subnet_cidr_block = "10.0.0.0/28"
