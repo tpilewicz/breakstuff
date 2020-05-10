@@ -94,12 +94,12 @@ resource "aws_security_group_rule" "allow_troublemaker" {
   security_group_id        = var.funes_sg_id
 }
 
-## Trigger every minute
+## Trigger every week
 
 resource "aws_cloudwatch_event_rule" "troublemaker" {
-  name                = "${local.troublemaker_name}-one-minute"
-  schedule_expression = "rate(1 minute)"
-  description         = "Fires every minute"
+  name                = "${local.troublemaker_name}-one-week"
+  schedule_expression = "rate(7 days)"
+  description         = "Fires every week"
 
   tags = local.tags
 }
