@@ -2,10 +2,12 @@ package common
 
 import (
 	"fmt"
-	"github.com/go-redis/redis/v7"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"os"
 	"strconv"
-	"time"
 )
 
 const defaultCellValue = 1
@@ -27,17 +29,23 @@ type Store struct {
 }
 
 type StoreModifier interface {
-	Get(key string) (string, error)
-	Set(key string, value interface{}, expiration time.Duration) error
+	Get(key string) (int, error)
+	Set(key string, value int) error
 }
 
-type RedisStoreModifier struct {
-	client redis.Client
+type DynamoStoreModifier struct {
+	client dynamodb.DynamoDB
+	table  string
 }
 
 type Cell struct {
 	X int
 	Y int
+}
+
+type dynamoItem struct {
+	Key   string
+	Value int
 }
 
 func (c Cell) IsValid(nbRows int, nbCols int) bool {
@@ -46,22 +54,56 @@ func (c Cell) IsValid(nbRows int, nbCols int) bool {
 	return validX && validY
 }
 
-func (modifier RedisStoreModifier) Get(key string) (string, error) {
-	return modifier.client.Get(key).Result()
+func (modifier DynamoStoreModifier) Get(key string) (int, error) {
+	result, err := modifier.client.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(modifier.table),
+		Key: map[string]*dynamodb.AttributeValue{
+			"Key": {
+				S: aws.String(key),
+			},
+		},
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	item := dynamoItem{}
+	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
+	return item.Value, err
 }
 
-func (modifier RedisStoreModifier) Set(key string, value interface{}, expiration time.Duration) error {
-	return modifier.client.Set(key, value, expiration).Err()
+func (modifier DynamoStoreModifier) Set(key string, value int) error {
+	input := &dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":v": {
+				N: aws.String(string(value)),
+			},
+		},
+		TableName: aws.String(modifier.table),
+		Key: map[string]*dynamodb.AttributeValue{
+			"Key": {
+				S: aws.String(key),
+			},
+		},
+		ReturnValues:     aws.String("UPDATED_NEW"),
+		UpdateExpression: aws.String("set Value = :v"),
+	}
+
+	_, err := modifier.client.UpdateItem(input)
+	return err
 }
 
 func ConnectToFunes() (Store, error) {
-	opts, err := redis.ParseURL(os.Getenv("FUNES_URL"))
-	if err != nil {
-		return Store{}, err
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc := dynamodb.New(sess)
+	table := os.Getenv("FUNES_TABLE")
+	if table == "" {
+		return Store{}, fmt.Errorf("Need to set env FUNES_TABLE!")
 	}
-	return Store{
-		RedisStoreModifier{*redis.NewClient(opts)},
-	}, nil
+	modifier := DynamoStoreModifier{client: *svc, table: table}
+	return Store{modifier}, nil
 }
 
 func (store Store) GetGrid(nbRows int, nb_cols int) (map[string]int, error) {
@@ -80,17 +122,19 @@ func (store Store) GetGrid(nbRows int, nb_cols int) (map[string]int, error) {
 
 func (store Store) GetOrSetCell(x int, y int) (int, error) {
 	got, getErr := store.GetCell(x, y)
-	if getErr == redis.Nil {
+	switch errV := getErr.(type) {
+	case *dynamodb.ResourceNotFoundException, *ClausiusTestError:
 		setErr := store.SetCell(x, y, defaultCellValue)
 		if setErr != nil {
 			return 0, setErr
 		}
 		return defaultCellValue, nil
+	default:
+		return got, errV
 	}
-	return got, getErr
 }
 
-// TODO: use Redis eval to have an isolable operation
+// TODO: use dynamodb atomic operation
 func (store Store) RevertState(x int, y int) error {
 	state, err := store.GetCell(x, y)
 	if err != nil {
@@ -102,16 +146,12 @@ func (store Store) RevertState(x int, y int) error {
 
 func (store Store) GetCell(x int, y int) (int, error) {
 	key := BuildKey(x, y)
-	value, err := store.Get(key)
-	if err != nil {
-		return 0, err
-	}
-	return strconv.Atoi(value)
+	return store.Get(key)
 }
 
 func (store Store) SetCell(x int, y int, v int) error {
 	key := BuildKey(x, y)
-	return store.Set(key, v, 0)
+	return store.Set(key, v)
 }
 
 func BuildKey(x int, y int) string {

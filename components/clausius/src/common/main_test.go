@@ -2,13 +2,9 @@ package common
 
 import (
 	"fmt"
-	"github.com/go-redis/redis/v7"
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/mock"
 	"os"
-	"strconv"
 	"testing"
-	"time"
 )
 
 func TestIsValid(t *testing.T) {
@@ -59,19 +55,6 @@ func TestGetGridSize(t *testing.T) {
 	}
 }
 
-type MockStoreModifier struct {
-	mock.Mock
-}
-
-func (store *MockStoreModifier) Get(key string) (string, error) {
-	rtns := store.Called(key)
-	return rtns.String(0), rtns.Error(1)
-}
-func (store *MockStoreModifier) Set(key string, value interface{}, expiration time.Duration) error {
-	rtns := store.Called(key, value, expiration)
-	return rtns.Error(0)
-}
-
 func TestGetGrid(t *testing.T) {
 	mockModifier := &MockStoreModifier{}
 	store := Store{mockModifier}
@@ -83,14 +66,13 @@ func TestGetGrid(t *testing.T) {
 	for y := 0; y < nb_rows; y++ {
 		for x := 0; x < nb_cols-1; x++ {
 			v := (x + y) % 2
-			vStr := strconv.Itoa(v)
 			want[BuildKey(x, y)] = v
-			mockModifier.On("Get", BuildKey(x, y)).Return(vStr, nil).Once()
+			mockModifier.On("Get", BuildKey(x, y)).Return(v, nil).Once()
 		}
 		x := nb_cols - 1
 		want[BuildKey(x, y)] = defaultCellValue
-		mockModifier.On("Get", BuildKey(x, y)).Return("", redis.Nil).Once()
-		mockModifier.On("Set", BuildKey(x, y), defaultCellValue, time.Duration(0)).Return(nil).Once()
+		mockModifier.On("Get", BuildKey(x, y)).Return(0, &ClausiusTestError{"Nope"}).Once()
+		mockModifier.On("Set", BuildKey(x, y), defaultCellValue).Return(nil).Once()
 	}
 
 	got, err := store.GetGrid(nb_rows, nb_cols)
@@ -98,7 +80,7 @@ func TestGetGrid(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !cmp.Equal(got, want) {
-		t.Fatal(fmt.Errorf("Got %v, want %v", got, want))
+		t.Fatal(fmt.Errorf("Got %#v, want %#v", got, want))
 	}
 
 }
@@ -110,9 +92,8 @@ func TestGetOrSetCell(t *testing.T) {
 	x := 1
 	y := 15
 	v := 1
-	vStr := "1"
 
-	mockModifier.On("Get", BuildKey(x, y)).Return(vStr, nil).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(v, nil).Once()
 	got, err := store.GetOrSetCell(x, y)
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +103,7 @@ func TestGetOrSetCell(t *testing.T) {
 	}
 
 	expectedErr := fmt.Errorf("This is an expected error.")
-	mockModifier.On("Get", BuildKey(x, y)).Return(vStr, expectedErr).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(0, expectedErr).Once()
 	got, err = store.GetOrSetCell(x, y)
 	if got != 0 {
 		t.Fatal(fmt.Errorf("Got %v, want %v", got, 0))
@@ -131,8 +112,8 @@ func TestGetOrSetCell(t *testing.T) {
 		t.Fatal(fmt.Errorf("Got error: %v, want error: %v", err, expectedErr))
 	}
 
-	mockModifier.On("Get", BuildKey(x, y)).Return(vStr, redis.Nil).Once()
-	mockModifier.On("Set", BuildKey(x, y), defaultCellValue, time.Duration(0)).Return(nil).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(0, &ClausiusTestError{"Nope"}).Once()
+	mockModifier.On("Set", BuildKey(x, y), defaultCellValue).Return(nil).Once()
 	got, err = store.GetOrSetCell(x, y)
 	if got != defaultCellValue {
 		t.Fatal(fmt.Errorf("Got %v, want %v (default cell value)", got, defaultCellValue))
@@ -141,8 +122,8 @@ func TestGetOrSetCell(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mockModifier.On("Get", BuildKey(x, y)).Return(vStr, redis.Nil).Once()
-	mockModifier.On("Set", BuildKey(x, y), defaultCellValue, time.Duration(0)).Return(expectedErr).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(v, &ClausiusTestError{"Nope"}).Once()
+	mockModifier.On("Set", BuildKey(x, y), defaultCellValue).Return(expectedErr).Once()
 	got, err = store.GetOrSetCell(x, y)
 	if got != 0 {
 		t.Fatal(fmt.Errorf("Got %v, want %v", got, 0))
@@ -161,8 +142,7 @@ func TestGetCell(t *testing.T) {
 	x := 5
 	y := 1
 	v := 0
-	vStr := "0"
-	mockModifier.On("Get", BuildKey(x, y)).Return(vStr, nil).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(v, nil).Once()
 	got, err := store.GetCell(x, y)
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +152,7 @@ func TestGetCell(t *testing.T) {
 	}
 
 	expectedErr := fmt.Errorf("This is an expected error.")
-	mockModifier.On("Get", BuildKey(x, y)).Return(string(v), expectedErr).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(v, expectedErr).Once()
 	got, err = store.GetCell(x, y)
 	if err != expectedErr {
 		t.Fatal(fmt.Errorf("Got error: %v, want error: %v", err, expectedErr))
@@ -191,14 +171,14 @@ func TestSetCell(t *testing.T) {
 	x := 2
 	y := 10
 	v := 1
-	mockModifier.On("Set", BuildKey(x, y), v, time.Duration(0)).Return(nil).Once()
+	mockModifier.On("Set", BuildKey(x, y), v).Return(nil).Once()
 	err := store.SetCell(x, y, v)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	expectedErr := fmt.Errorf("This is an expected error.")
-	mockModifier.On("Set", BuildKey(x, y), v, time.Duration(0)).Return(expectedErr).Once()
+	mockModifier.On("Set", BuildKey(x, y), v).Return(expectedErr).Once()
 	err = store.SetCell(x, y, v)
 	if err != expectedErr {
 		t.Fatal(fmt.Errorf("Got error: %v, want error: %v", err, expectedErr))
@@ -222,15 +202,15 @@ func TestRevertState(t *testing.T) {
 	x := 2
 	y := 10
 
-	mockModifier.On("Get", BuildKey(x, y)).Return("0", nil).Once()
-	mockModifier.On("Set", BuildKey(x, y), 1, time.Duration(0)).Return(nil).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(0, nil).Once()
+	mockModifier.On("Set", BuildKey(x, y), 1).Return(nil).Once()
 	err := store.RevertState(x, y)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	mockModifier.On("Get", BuildKey(x, y)).Return("1", nil).Once()
-	mockModifier.On("Set", BuildKey(x, y), 0, time.Duration(0)).Return(nil).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(1, nil).Once()
+	mockModifier.On("Set", BuildKey(x, y), 0).Return(nil).Once()
 	err = store.RevertState(x, y)
 	if err != nil {
 		t.Fatal(err)
