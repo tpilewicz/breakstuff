@@ -71,7 +71,7 @@ func TestGetGrid(t *testing.T) {
 		}
 		x := nb_cols - 1
 		want[BuildKey(x, y)] = defaultCellValue
-		mockModifier.On("Get", BuildKey(x, y)).Return(0, &ClausiusTestError{"Nope"}).Once()
+		mockModifier.On("Get", BuildKey(x, y)).Return(0, &ItemNotFound{"Nope"}).Once()
 		mockModifier.On("Set", BuildKey(x, y), defaultCellValue).Return(nil).Once()
 	}
 
@@ -112,7 +112,7 @@ func TestGetOrSetCell(t *testing.T) {
 		t.Fatal(fmt.Errorf("Got error: %v, want error: %v", err, expectedErr))
 	}
 
-	mockModifier.On("Get", BuildKey(x, y)).Return(0, &ClausiusTestError{"Nope"}).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(0, &ItemNotFound{"Nope"}).Once()
 	mockModifier.On("Set", BuildKey(x, y), defaultCellValue).Return(nil).Once()
 	got, err = store.GetOrSetCell(x, y)
 	if got != defaultCellValue {
@@ -122,7 +122,7 @@ func TestGetOrSetCell(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mockModifier.On("Get", BuildKey(x, y)).Return(v, &ClausiusTestError{"Nope"}).Once()
+	mockModifier.On("Get", BuildKey(x, y)).Return(v, &ItemNotFound{"Nope"}).Once()
 	mockModifier.On("Set", BuildKey(x, y), defaultCellValue).Return(expectedErr).Once()
 	got, err = store.GetOrSetCell(x, y)
 	if got != 0 {

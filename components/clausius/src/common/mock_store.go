@@ -25,9 +25,3 @@ func (store *MockStoreModifier) Set(key string, value int) error {
 	rtns := store.Called(key, value)
 	return rtns.Error(0)
 }
-
-type ClausiusTestError struct {
-	msg string
-}
-
-func (e *ClausiusTestError) Error() string { return e.msg }

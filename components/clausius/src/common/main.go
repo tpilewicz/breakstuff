@@ -44,8 +44,16 @@ type Cell struct {
 }
 
 type dynamoItem struct {
-	Key   string
-	Value int
+	Key string
+	V   int
+}
+
+type ItemNotFound struct {
+	key string
+}
+
+func (e *ItemNotFound) Error() string {
+	return fmt.Sprintf("No dynamodb item found for key: %v", e.key)
 }
 
 func (c Cell) IsValid(nbRows int, nbCols int) bool {
@@ -66,10 +74,13 @@ func (modifier DynamoStoreModifier) Get(key string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	if len(result.Item) == 0 {
+		return 0, &ItemNotFound{key}
+	}
 
 	item := dynamoItem{}
 	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
-	return item.Value, err
+	return item.V, err
 }
 
 func (modifier DynamoStoreModifier) Set(key string, value int) error {
@@ -128,7 +139,7 @@ func (store Store) GetGrid(nbRows int, nb_cols int) (map[string]int, error) {
 func (store Store) GetOrSetCell(x int, y int) (int, error) {
 	got, getErr := store.GetCell(x, y)
 	switch errV := getErr.(type) {
-	case *dynamodb.ResourceNotFoundException, *ClausiusTestError:
+	case *ItemNotFound:
 		setErr := store.SetCell(x, y, defaultCellValue)
 		if setErr != nil {
 			return 0, setErr
