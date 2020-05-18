@@ -85,7 +85,7 @@ data "aws_iam_policy_document" "hit_funes" {
 resource "aws_iam_role_policy" "hit_funes" {
   name       = "TroubleMakerHitFunes"
   role       = aws_iam_role.this.name
-  policy_arn = data.aws_iam_policy_document.hit_funes.json
+  policy     = data.aws_iam_policy_document.hit_funes.json
 }
 
 ## API

@@ -80,7 +80,7 @@ data "aws_iam_policy_document" "hit_funes" {
 resource "aws_iam_role_policy" "troublemaker_funes" {
   name       = "TroubleMakerHitFunes"
   role       = aws_iam_role.troublemaker.name
-  policy_arn = data.aws_iam_policy_document.hit_funes.json
+  policy     = data.aws_iam_policy_document.hit_funes.json
 }
 
 ## Trigger every week
