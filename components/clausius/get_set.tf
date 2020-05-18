@@ -28,10 +28,7 @@ module "get_grid" {
   api_resource  = var.get_grid_resource
   http_method   = "GET"
   lambda_src    = "../../components/clausius/src/get_grid/main"
-  vpc_id        = var.vpc_id
-  funes_subnets = var.funes_subnets
-  funes_sg_id   = var.funes_sg_id
-  funes_url     = var.funes_url
+  funes_table   = var.funes_table
 
   nb_rows = local.nb_rows
   nb_cols = local.nb_cols
@@ -46,10 +43,7 @@ module "set_cell" {
   api_resource  = var.set_cell_resource
   http_method   = "POST"
   lambda_src    = "../../components/clausius/src/set_cell/main"
-  vpc_id        = var.vpc_id
-  funes_subnets = var.funes_subnets
-  funes_sg_id   = var.funes_sg_id
-  funes_url     = var.funes_url
+  funes_table   = var.funes_table
 
   nb_rows = local.nb_rows
   nb_cols = local.nb_cols
