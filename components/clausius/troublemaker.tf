@@ -62,6 +62,27 @@ resource "aws_iam_role_policy_attachment" "troublemaker_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+## Funes access
+
+data "aws_iam_policy_document" "hit_funes" {
+  statement {
+    sid = "HitFunes"
+
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem"
+    ]
+
+    resources = [var.funes_table.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "troublemaker_funes" {
+  name       = "TroubleMakerHitFunes"
+  role       = aws_iam_role.troublemaker.name
+  policy_arn = data.aws_iam_policy_document.hit_funes.json
+}
+
 ## Trigger every week
 
 resource "aws_cloudwatch_event_rule" "troublemaker" {

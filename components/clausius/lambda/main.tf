@@ -67,6 +67,27 @@ resource "aws_iam_role_policy_attachment" "attach_execution_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+## Funes access
+
+data "aws_iam_policy_document" "hit_funes" {
+  statement {
+    sid = "HitFunes"
+
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem"
+    ]
+
+    resources = [var.funes_table.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "hit_funes" {
+  name       = "TroubleMakerHitFunes"
+  role       = aws_iam_role.this.name
+  policy_arn = data.aws_iam_policy_document.hit_funes.json
+}
+
 ## API
 
 resource "aws_api_gateway_resource" "this" {
