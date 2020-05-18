@@ -84,10 +84,7 @@ func (modifier DynamoStoreModifier) Get(key string) (int, error) {
 }
 
 func (modifier DynamoStoreModifier) Set(key string, value int) error {
-	vStr, err := strconv.Itoa(value)
-	if err != nil {
-		return "", err
-	}
+	vStr := strconv.Itoa(value)
 
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
@@ -105,7 +102,7 @@ func (modifier DynamoStoreModifier) Set(key string, value int) error {
 		UpdateExpression: aws.String("set V = :v"),
 	}
 
-	_, err = modifier.client.UpdateItem(input)
+	_, err := modifier.client.UpdateItem(input)
 	return err
 }
 
