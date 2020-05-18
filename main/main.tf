@@ -1,18 +1,20 @@
-resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/24"
-  tags = {
-    Name = var.environment
-  }
+locals {
+  get_grid_resource = "get_grid"
+  set_cell_resource = "set_cell"
+}
+
+variable "environment" {
+}
+variable "refresh_seconds" {
+}
+variable "domain_name" {
 }
 
 module "funes" {
   source = "../components/funes"
 
-  environment       = var.environment
-  node_type         = "cache.t3.micro"
-  node_count        = 1
-  vpc_id            = aws_vpc.main.id
-  subnet_cidr_block = "10.0.0.0/28"
+  environment = var.environment
+  table_name  = "Funes${title(var.environment)}"
 }
 
 module "clausius" {
@@ -20,10 +22,7 @@ module "clausius" {
 
   environment   = var.environment
 
-  vpc_id        = aws_vpc.main.id
-  funes_subnets = module.funes.subnet_ids
-  funes_sg_id   = module.funes.sg_id
-  funes_url     = module.funes.url
+  funes_table = module.funes.table
 
   get_grid_resource = local.get_grid_resource
   set_cell_resource = local.set_cell_resource
