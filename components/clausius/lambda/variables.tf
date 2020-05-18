@@ -15,10 +15,7 @@ variable "http_method" {}
 
 variable "lambda_src" {}
 
-variable "vpc_id" {}
-variable "funes_subnets" {}
-variable "funes_sg_id" {}
-variable "funes_url" {}
+variable "funes_table" {}
 
 variable "nb_rows" {
   default = 20

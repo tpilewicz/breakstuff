@@ -21,17 +21,12 @@ resource "aws_lambda_function" "this" {
 
   depends_on = [aws_cloudwatch_log_group.this]
 
-  vpc_config {
-    subnet_ids         = var.funes_subnets
-    security_group_ids = [aws_security_group.this.id]
-  }
-
   tags = local.tags
 
   environment {
     variables = {
       ENVIRONMENT = var.environment
-      FUNES_URL   = var.funes_url
+      FUNES_TABLE = var.funes_table.name
       NB_ROWS     = var.nb_rows
       NB_COLS     = var.nb_cols
 
@@ -70,35 +65,6 @@ resource "aws_cloudwatch_log_group" "this" {
 resource "aws_iam_role_policy_attachment" "attach_execution_policy" {
   role       = aws_iam_role.this.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_role_policy_attachment" "vpc_policy" {
-  role       = aws_iam_role.this.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
-## Security group + rule to hit funes
-
-resource "aws_security_group" "this" {
-  name   = local.default_name
-  vpc_id = var.vpc_id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  tags = local.tags
-}
-
-resource "aws_security_group_rule" "allow_this" {
-  type                     = "ingress"
-  from_port                = 6379
-  to_port                  = 6379
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.this.id
-  security_group_id        = var.funes_sg_id
 }
 
 ## API

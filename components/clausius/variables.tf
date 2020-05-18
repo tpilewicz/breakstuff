@@ -16,10 +16,8 @@ locals {
 
 variable "environment" {}
 
-variable "vpc_id" {}
-variable "funes_subnets" {}
-variable "funes_sg_id" {}
-variable "funes_url" {}
+variable "funes_table" {
+}
 
 variable "get_grid_resource" {}
 variable "set_cell_resource" {}
