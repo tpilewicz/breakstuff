@@ -2,8 +2,11 @@ package common
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/google/go-cmp/cmp"
 	"os"
+	"strconv"
 	"testing"
 )
 
@@ -57,37 +60,71 @@ func TestGetGridSize(t *testing.T) {
 
 func TestGetGrid(t *testing.T) {
 	mockModifier := &MockStoreModifier{}
-	store := Store{mockModifier}
+	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
 
-	nb_rows := 10
-	nb_cols := 15
+	nbRows := 10
+	nbCols := 15
 
 	want := make(map[string]int)
-	for y := 0; y < nb_rows; y++ {
-		for x := 0; x < nb_cols-1; x++ {
+	responses := []map[string]*dynamodb.AttributeValue{}
+	unprocessedKeys := map[string]*dynamodb.KeysAndAttributes{
+		"my_tbl": {
+			Keys: []map[string]*dynamodb.AttributeValue{},
+		},
+	}
+	for y := 0; y < nbRows; y++ {
+		for x := 0; x < nbCols-1; x++ {
 			v := (x + y) % 2
 			want[BuildKey(x, y)] = v
-			mockModifier.On("Get", BuildKey(x, y)).Return(v, nil).Once()
+			vStr := strconv.Itoa(v)
+			responses = append(responses, map[string]*dynamodb.AttributeValue{
+				"Key": &dynamodb.AttributeValue{
+					S: aws.String(BuildKey(x, y)),
+				},
+				"V": &dynamodb.AttributeValue{
+					N: aws.String(vStr),
+				},
+			})
 		}
-		x := nb_cols - 1
+		x := nbCols - 1
 		want[BuildKey(x, y)] = defaultCellValue
-		mockModifier.On("Get", BuildKey(x, y)).Return(0, &ItemNotFound{"Nope"}).Once()
+		unprocessedKeys["my_tbl"].Keys = append(
+			unprocessedKeys["my_tbl"].Keys,
+			map[string]*dynamodb.AttributeValue{
+				"Key": {
+					S: aws.String(BuildKey(x, y)),
+				},
+			},
+		)
 		mockModifier.On("Set", BuildKey(x, y), defaultCellValue).Return(nil).Once()
 	}
 
-	got, err := store.GetGrid(nb_rows, nb_cols)
+	allKeys := GetAllKeys(nbRows, nbCols)
+	attrValues := BuildAllAttrValues(allKeys)
+	input := BuildBGIInput(attrValues, store.table)
+	mockModifier.On("BatchGetItem", input).Return(
+		&dynamodb.BatchGetItemOutput{
+			Responses: map[string][]map[string]*dynamodb.AttributeValue{
+				"my_tbl": responses,
+			},
+			UnprocessedKeys: unprocessedKeys,
+		},
+		nil,
+	)
+
+	got, err := store.GetGrid(nbRows, nbCols)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !cmp.Equal(got, want) {
-		t.Fatal(fmt.Errorf("Got %#v, want %#v", got, want))
+		t.Fatal(fmt.Errorf("Got %#v\nWant %#v", got, want))
 	}
 
 }
 
 func TestGetOrSetCell(t *testing.T) {
 	mockModifier := &MockStoreModifier{}
-	store := Store{mockModifier}
+	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
 
 	x := 1
 	y := 15
@@ -137,7 +174,7 @@ func TestGetOrSetCell(t *testing.T) {
 
 func TestGetCell(t *testing.T) {
 	mockModifier := &MockStoreModifier{}
-	store := Store{mockModifier}
+	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
 
 	x := 5
 	y := 1
@@ -166,7 +203,7 @@ func TestGetCell(t *testing.T) {
 
 func TestSetCell(t *testing.T) {
 	mockModifier := &MockStoreModifier{}
-	store := Store{mockModifier}
+	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
 
 	x := 2
 	y := 10
@@ -197,7 +234,7 @@ func TestBuildKey(t *testing.T) {
 
 func TestRevertState(t *testing.T) {
 	mockModifier := &MockStoreModifier{}
-	store := Store{mockModifier}
+	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
 
 	x := 2
 	y := 10
@@ -217,4 +254,108 @@ func TestRevertState(t *testing.T) {
 	}
 
 	mockModifier.AssertExpectations(t)
+}
+
+func TestGetAllKeys(t *testing.T) {
+	nbRows := 4
+	nbCols := 4
+	want := []string{}
+	for y := 0; y < nbRows; y++ {
+		for x := 0; x < nbCols; x++ {
+			want = append(want, BuildKey(x, y))
+		}
+	}
+	got := GetAllKeys(4, 4)
+	if !cmp.Equal(got, want) {
+		t.Fatal(fmt.Errorf("Got %#v\nWant %#v", got, want))
+	}
+}
+
+func TestBuildAllAttrValues(t *testing.T) {
+	got := BuildAllAttrValues([]string{"key1", "key2", "key3"})
+	want := []map[string]*dynamodb.AttributeValue{
+		{
+			"Key": &dynamodb.AttributeValue{
+				S: aws.String("key1"),
+			},
+		},
+		{
+			"Key": &dynamodb.AttributeValue{
+				S: aws.String("key2"),
+			},
+		},
+		{
+			"Key": &dynamodb.AttributeValue{
+				S: aws.String("key3"),
+			},
+		},
+	}
+	if !cmp.Equal(got, want) {
+		t.Fatal(fmt.Errorf("Got %#v\nWant %#v", got, want))
+	}
+}
+
+func TestBuildAttrValue(t *testing.T) {
+	got := BuildAttrValue("my_key")
+	want := map[string]*dynamodb.AttributeValue{
+		"Key": &dynamodb.AttributeValue{
+			S: aws.String("my_key"),
+		},
+	}
+	if !cmp.Equal(got, want) {
+		t.Fatal(fmt.Errorf("Got %#v\nWant %#v", got, want))
+	}
+}
+
+func TestBuildBGIInput(t *testing.T) {
+	attrValues := BuildAllAttrValues([]string{"key1", "key2", "key3"})
+
+	got := *BuildBGIInput(attrValues, "my_tbl")
+	want := dynamodb.BatchGetItemInput{
+		RequestItems: map[string]*dynamodb.KeysAndAttributes{
+			"my_tbl": {
+				Keys:                 attrValues,
+				ProjectionExpression: aws.String("V"),
+			},
+		},
+	}
+	if !cmp.Equal(got, want) {
+		t.Fatal(fmt.Errorf("Got %#v\nWant %#v", got, want))
+	}
+}
+
+func TestFillMap(t *testing.T) {
+	got := make(map[string]int)
+	output := dynamodb.BatchGetItemOutput{
+		Responses: map[string][]map[string]*dynamodb.AttributeValue{
+			"my_tbl": {
+				{
+					"Key": &dynamodb.AttributeValue{
+						S: aws.String("key1"),
+					},
+					"V": &dynamodb.AttributeValue{
+						N: aws.String("42"),
+					},
+				},
+				{
+					"Key": &dynamodb.AttributeValue{
+						S: aws.String("key2"),
+					},
+					"V": &dynamodb.AttributeValue{
+						N: aws.String("324"),
+					},
+				},
+			},
+		},
+	}
+	FillMap(got, &output, "my_tbl")
+
+	want := map[string]int{
+		"key1": 42,
+		"key2": 324,
+	}
+
+	if !cmp.Equal(got, want) {
+		t.Fatal(fmt.Errorf("Got %#v\nWant %#v", got, want))
+	}
 }

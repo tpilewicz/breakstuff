@@ -2,10 +2,7 @@ package common
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"os"
 	"strconv"
 )
@@ -17,120 +14,65 @@ func GetGridSize() (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	nb_cols, err := strconv.Atoi(os.Getenv("NB_COLS"))
+	nbCols, err := strconv.Atoi(os.Getenv("NB_COLS"))
 	if err != nil {
 		return 0, 0, err
 	}
-	return nbRows, nb_cols, nil
+	return nbRows, nbCols, nil
 }
 
-type Store struct {
-	StoreModifier
+func GetAllKeys(nbRows int, nbCols int) []string {
+	allKeys := []string{}
+	for y := 0; y < nbRows; y++ {
+		for x := 0; x < nbCols; x++ {
+			allKeys = append(allKeys, BuildKey(x, y))
+		}
+	}
+	return allKeys
+}
+
+func BuildKey(x int, y int) string {
+	return fmt.Sprintf("x:%v,y:%v", x, y)
 }
 
 type StoreModifier interface {
 	Get(key string) (int, error)
 	Set(key string, value int) error
+	BatchGetItem(input *dynamodb.BatchGetItemInput) (*dynamodb.BatchGetItemOutput, error)
 }
 
-type DynamoStoreModifier struct {
-	client dynamodb.DynamoDB
-	table  string
+type Store struct {
+	StoreModifier
+	table string
 }
 
-type Cell struct {
-	X int
-	Y int
-}
+func (store Store) GetGrid(nbRows int, nbCols int) (map[string]int, error) {
+	allKeys := GetAllKeys(nbRows, nbCols)
+	attrValues := BuildAllAttrValues(allKeys)
+	input := BuildBGIInput(attrValues, store.table)
 
-type dynamoItem struct {
-	Key string
-	V   int
-}
-
-type ItemNotFound struct {
-	key string
-}
-
-func (e *ItemNotFound) Error() string {
-	return fmt.Sprintf("No dynamodb item found for key: %v", e.key)
-}
-
-func (c Cell) IsValid(nbRows int, nbCols int) bool {
-	validX := 0 <= c.X && c.X < nbCols
-	validY := 0 <= c.Y && c.Y < nbRows
-	return validX && validY
-}
-
-func (modifier DynamoStoreModifier) Get(key string) (int, error) {
-	result, err := modifier.client.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(modifier.table),
-		Key: map[string]*dynamodb.AttributeValue{
-			"Key": {
-				S: aws.String(key),
-			},
-		},
-	})
+	output, err := store.BatchGetItem(input)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	if len(result.Item) == 0 {
-		return 0, &ItemNotFound{key}
+	result := make(map[string]int)
+	err = FillMap(result, output, store.table)
+	if err != nil {
+		return nil, err
 	}
-
-	item := dynamoItem{}
-	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
-	return item.V, err
+	return result, store.SetAndFillUnprocessed(output.UnprocessedKeys, result)
 }
 
-func (modifier DynamoStoreModifier) Set(key string, value int) error {
-	vStr := strconv.Itoa(value)
-
-	input := &dynamodb.UpdateItemInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":v": {
-				N: aws.String(vStr),
-			},
-		},
-		TableName: aws.String(modifier.table),
-		Key: map[string]*dynamodb.AttributeValue{
-			"Key": {
-				S: aws.String(key),
-			},
-		},
-		ReturnValues:     aws.String("UPDATED_NEW"),
-		UpdateExpression: aws.String("set V = :v"),
-	}
-
-	_, err := modifier.client.UpdateItem(input)
-	return err
-}
-
-func ConnectToFunes() (Store, error) {
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	svc := dynamodb.New(sess)
-	table := os.Getenv("FUNES_TABLE")
-	if table == "" {
-		return Store{}, fmt.Errorf("Need to set env FUNES_TABLE!")
-	}
-	modifier := DynamoStoreModifier{client: *svc, table: table}
-	return Store{modifier}, nil
-}
-
-func (store Store) GetGrid(nbRows int, nb_cols int) (map[string]int, error) {
-	m := make(map[string]int)
-	var err error
-	for y := 0; y < nbRows; y++ {
-		for x := 0; x < nb_cols; x++ {
-			m[BuildKey(x, y)], err = store.GetOrSetCell(x, y)
-			if err != nil {
-				return m, err
-			}
+func (store Store) SetAndFillUnprocessed(unprocessedKeys map[string]*dynamodb.KeysAndAttributes, m map[string]int) error {
+	for _, unprocessedKey := range unprocessedKeys[store.table].Keys {
+		key := *unprocessedKey["Key"].S
+		err := store.Set(key, defaultCellValue)
+		if err != nil {
+			return err
 		}
+		m[key] = defaultCellValue
 	}
-	return m, nil
+	return nil
 }
 
 func (store Store) GetOrSetCell(x int, y int) (int, error) {
@@ -167,6 +109,13 @@ func (store Store) SetCell(x int, y int, v int) error {
 	return store.Set(key, v)
 }
 
-func BuildKey(x int, y int) string {
-	return fmt.Sprintf("x:%v,y:%v", x, y)
+type Cell struct {
+	X int
+	Y int
+}
+
+func (c Cell) IsValid(nbRows int, nbCols int) bool {
+	validX := 0 <= c.X && c.X < nbCols
+	validY := 0 <= c.Y && c.Y < nbRows
+	return validX && validY
 }
