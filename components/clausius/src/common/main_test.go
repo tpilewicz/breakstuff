@@ -101,7 +101,8 @@ func TestGetGrid(t *testing.T) {
 
 	allKeys := GetAllKeys(nbRows, nbCols)
 	attrValues := BuildAllAttrValues(allKeys)
-	input := BuildBGIInput(attrValues, store.table)
+	requestItems := BuildRequestItems(attrValues, store.table)
+	input := BuildBGIInput(requestItems)
 	mockModifier.On("BatchGetItem", input).Return(
 		&dynamodb.BatchGetItemOutput{
 			Responses: map[string][]map[string]*dynamodb.AttributeValue{
@@ -309,8 +310,9 @@ func TestBuildAttrValue(t *testing.T) {
 
 func TestBuildBGIInput(t *testing.T) {
 	attrValues := BuildAllAttrValues([]string{"key1", "key2", "key3"})
+	requestItems := BuildRequestItems(attrValues, store.table)
 
-	got := *BuildBGIInput(attrValues, "my_tbl")
+	got := *BuildBGIInput(requestItems)
 	want := dynamodb.BatchGetItemInput{
 		RequestItems: map[string]*dynamodb.KeysAndAttributes{
 			"my_tbl": {

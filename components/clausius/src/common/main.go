@@ -49,7 +49,8 @@ type Store struct {
 func (store Store) GetGrid(nbRows int, nbCols int) (map[string]int, error) {
 	allKeys := GetAllKeys(nbRows, nbCols)
 	attrValues := BuildAllAttrValues(allKeys)
-	input := BuildBGIInput(attrValues, store.table)
+	requestItems := BuildRequestItems(attrValues, store.table)
+	input := BuildBGIInput(requestItems)
 
 	output, err := store.BatchGetItem(input)
 	if err != nil {

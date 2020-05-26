@@ -106,14 +106,18 @@ func BuildAttrValue(key string) map[string]*dynamodb.AttributeValue {
 	}
 }
 
-func BuildBGIInput(attrValues []map[string]*dynamodb.AttributeValue, tableName string) *dynamodb.BatchGetItemInput {
-	return &dynamodb.BatchGetItemInput{
-		RequestItems: map[string]*dynamodb.KeysAndAttributes{
-			tableName: {
-				Keys:                 attrValues,
-				ProjectionExpression: aws.String("V"),
-			},
+func BuildRequestItems(attrValues []map[string]*dynamodb.AttributeValue, tableName string) map[string]*dynamodb.KeysAndAttributes {
+	return map[string]*dynamodb.KeysAndAttributes{
+		tableName: {
+			Keys:                 attrValues,
+			ProjectionExpression: aws.String("V"),
 		},
+	}
+}
+
+func BuildBGIInput(requestItems map[string]*dynamodb.KeysAndAttributes) *dynamodb.BatchGetItemInput {
+	return &dynamodb.BatchGetItemInput{
+		RequestItems: requestItems,
 	}
 }
 
