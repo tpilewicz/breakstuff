@@ -9,10 +9,10 @@ variable table_name {}
 resource "aws_dynamodb_table" "main" {
   name           = var.table_name
   billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "Key"
+  hash_key       = "K"
 
   attribute {
-    name = "Key"
+    name = "K"
     type = "S"
   }
 

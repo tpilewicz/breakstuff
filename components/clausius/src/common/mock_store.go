@@ -11,6 +11,10 @@ type MockStoreModifier struct {
 	table string
 }
 
+func (modifier *MockStoreModifier) Table() string {
+	return modifier.table
+}
+
 // uh so *MockStoreModifier implements StoreModifier, but the dynamo one is not
 // a pointer?
 func (modifier *MockStoreModifier) Get(key string) (int, error) {

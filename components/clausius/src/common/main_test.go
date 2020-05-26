@@ -59,59 +59,60 @@ func TestGetGridSize(t *testing.T) {
 }
 
 func TestGetGrid(t *testing.T) {
-	mockModifier := &MockStoreModifier{}
-	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
+	mockModifier := &MockStoreModifier{table: "my_tbl"}
+	store := Store{StoreModifier: mockModifier}
 
 	nbRows := 10
 	nbCols := 15
 
 	want := make(map[string]int)
-	responses := []map[string]*dynamodb.AttributeValue{}
-	unprocessedKeys := map[string]*dynamodb.KeysAndAttributes{
-		"my_tbl": {
-			Keys: []map[string]*dynamodb.AttributeValue{},
-		},
-	}
+	allKeys := []string{}
+	allValues := []int{}
 	for y := 0; y < nbRows; y++ {
 		for x := 0; x < nbCols-1; x++ {
+			k := BuildKey(x, y)
 			v := (x + y) % 2
-			want[BuildKey(x, y)] = v
+			allKeys = append(allKeys, k)
+			allValues = append(allValues, v)
+			want[k] = v
+		}
+		x := nbCols - 1
+		k := BuildKey(x, y)
+		allKeys = append(allKeys, k)
+		allValues = append(allValues, defaultCellValue)
+		want[k] = defaultCellValue
+		mockModifier.On("Set", k, defaultCellValue).Return(nil).Once()
+	}
+
+	// TODO: a function for this?
+	keyChunks := SplitSSlice(allKeys, 100)
+	valueChunks := SplitISlice(allValues, 100)
+	for i, keyChunk := range keyChunks {
+		valueChunk := valueChunks[i]
+		responses := []map[string]*dynamodb.AttributeValue{}
+		for j, v := range valueChunk {
 			vStr := strconv.Itoa(v)
 			responses = append(responses, map[string]*dynamodb.AttributeValue{
-				"Key": &dynamodb.AttributeValue{
-					S: aws.String(BuildKey(x, y)),
+				"K": &dynamodb.AttributeValue{
+					S: aws.String(keyChunk[j]),
 				},
 				"V": &dynamodb.AttributeValue{
 					N: aws.String(vStr),
 				},
 			})
 		}
-		x := nbCols - 1
-		want[BuildKey(x, y)] = defaultCellValue
-		unprocessedKeys["my_tbl"].Keys = append(
-			unprocessedKeys["my_tbl"].Keys,
-			map[string]*dynamodb.AttributeValue{
-				"Key": {
-					S: aws.String(BuildKey(x, y)),
+		attrValues := BuildAllAttrValues(keyChunk)
+		requestItems := BuildRequestItems(attrValues, store.Table())
+		input := BuildBGIInput(requestItems)
+		mockModifier.On("BatchGetItem", input).Return(
+			&dynamodb.BatchGetItemOutput{
+				Responses: map[string][]map[string]*dynamodb.AttributeValue{
+					"my_tbl": responses,
 				},
 			},
+			nil,
 		)
-		mockModifier.On("Set", BuildKey(x, y), defaultCellValue).Return(nil).Once()
 	}
-
-	allKeys := GetAllKeys(nbRows, nbCols)
-	attrValues := BuildAllAttrValues(allKeys)
-	requestItems := BuildRequestItems(attrValues, store.table)
-	input := BuildBGIInput(requestItems)
-	mockModifier.On("BatchGetItem", input).Return(
-		&dynamodb.BatchGetItemOutput{
-			Responses: map[string][]map[string]*dynamodb.AttributeValue{
-				"my_tbl": responses,
-			},
-			UnprocessedKeys: unprocessedKeys,
-		},
-		nil,
-	)
 
 	got, err := store.GetGrid(nbRows, nbCols)
 	if err != nil {
@@ -124,8 +125,8 @@ func TestGetGrid(t *testing.T) {
 }
 
 func TestGetOrSetCell(t *testing.T) {
-	mockModifier := &MockStoreModifier{}
-	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
+	mockModifier := &MockStoreModifier{table: "my_tbl"}
+	store := Store{StoreModifier: mockModifier}
 
 	x := 1
 	y := 15
@@ -174,8 +175,8 @@ func TestGetOrSetCell(t *testing.T) {
 }
 
 func TestGetCell(t *testing.T) {
-	mockModifier := &MockStoreModifier{}
-	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
+	mockModifier := &MockStoreModifier{table: "my_tbl"}
+	store := Store{StoreModifier: mockModifier}
 
 	x := 5
 	y := 1
@@ -203,8 +204,8 @@ func TestGetCell(t *testing.T) {
 }
 
 func TestSetCell(t *testing.T) {
-	mockModifier := &MockStoreModifier{}
-	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
+	mockModifier := &MockStoreModifier{table: "my_tbl"}
+	store := Store{StoreModifier: mockModifier}
 
 	x := 2
 	y := 10
@@ -234,8 +235,8 @@ func TestBuildKey(t *testing.T) {
 }
 
 func TestRevertState(t *testing.T) {
-	mockModifier := &MockStoreModifier{}
-	store := Store{StoreModifier: mockModifier, table: "my_tbl"}
+	mockModifier := &MockStoreModifier{table: "my_tbl"}
+	store := Store{StoreModifier: mockModifier}
 
 	x := 2
 	y := 10
@@ -276,17 +277,17 @@ func TestBuildAllAttrValues(t *testing.T) {
 	got := BuildAllAttrValues([]string{"key1", "key2", "key3"})
 	want := []map[string]*dynamodb.AttributeValue{
 		{
-			"Key": &dynamodb.AttributeValue{
+			"K": &dynamodb.AttributeValue{
 				S: aws.String("key1"),
 			},
 		},
 		{
-			"Key": &dynamodb.AttributeValue{
+			"K": &dynamodb.AttributeValue{
 				S: aws.String("key2"),
 			},
 		},
 		{
-			"Key": &dynamodb.AttributeValue{
+			"K": &dynamodb.AttributeValue{
 				S: aws.String("key3"),
 			},
 		},
@@ -299,7 +300,7 @@ func TestBuildAllAttrValues(t *testing.T) {
 func TestBuildAttrValue(t *testing.T) {
 	got := BuildAttrValue("my_key")
 	want := map[string]*dynamodb.AttributeValue{
-		"Key": &dynamodb.AttributeValue{
+		"K": &dynamodb.AttributeValue{
 			S: aws.String("my_key"),
 		},
 	}
@@ -310,14 +311,14 @@ func TestBuildAttrValue(t *testing.T) {
 
 func TestBuildBGIInput(t *testing.T) {
 	attrValues := BuildAllAttrValues([]string{"key1", "key2", "key3"})
-	requestItems := BuildRequestItems(attrValues, store.table)
+	requestItems := BuildRequestItems(attrValues, "my_tbl")
 
 	got := *BuildBGIInput(requestItems)
 	want := dynamodb.BatchGetItemInput{
 		RequestItems: map[string]*dynamodb.KeysAndAttributes{
 			"my_tbl": {
 				Keys:                 attrValues,
-				ProjectionExpression: aws.String("V"),
+				ProjectionExpression: aws.String("V,K"),
 			},
 		},
 	}
@@ -327,12 +328,11 @@ func TestBuildBGIInput(t *testing.T) {
 }
 
 func TestFillMap(t *testing.T) {
-	got := make(map[string]int)
 	output := dynamodb.BatchGetItemOutput{
 		Responses: map[string][]map[string]*dynamodb.AttributeValue{
 			"my_tbl": {
 				{
-					"Key": &dynamodb.AttributeValue{
+					"K": &dynamodb.AttributeValue{
 						S: aws.String("key1"),
 					},
 					"V": &dynamodb.AttributeValue{
@@ -340,7 +340,7 @@ func TestFillMap(t *testing.T) {
 					},
 				},
 				{
-					"Key": &dynamodb.AttributeValue{
+					"K": &dynamodb.AttributeValue{
 						S: aws.String("key2"),
 					},
 					"V": &dynamodb.AttributeValue{
@@ -350,7 +350,10 @@ func TestFillMap(t *testing.T) {
 			},
 		},
 	}
-	FillMap(got, &output, "my_tbl")
+	got, err := FillMap(&output, "my_tbl")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	want := map[string]int{
 		"key1": 42,

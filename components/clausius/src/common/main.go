@@ -36,6 +36,7 @@ func BuildKey(x int, y int) string {
 }
 
 type StoreModifier interface {
+	Table() string
 	Get(key string) (int, error)
 	Set(key string, value int) error
 	BatchGetItem(input *dynamodb.BatchGetItemInput) (*dynamodb.BatchGetItemOutput, error)
@@ -43,37 +44,44 @@ type StoreModifier interface {
 
 type Store struct {
 	StoreModifier
-	table string
 }
 
 func (store Store) GetGrid(nbRows int, nbCols int) (map[string]int, error) {
 	allKeys := GetAllKeys(nbRows, nbCols)
-	attrValues := BuildAllAttrValues(allKeys)
-	requestItems := BuildRequestItems(attrValues, store.table)
-	input := BuildBGIInput(requestItems)
+	keyChunks := SplitSSlice(allKeys, 100)
+	result := make(map[string]int)
+	for _, keyChunk := range keyChunks {
+		m, err := store.GetValues(keyChunk)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range m {
+			result[k] = v
+		}
+	}
 
+	notFoundKeys := Except(allKeys, KeysOfMap(result))
+	for _, k := range notFoundKeys {
+		err := store.Set(k, defaultCellValue)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = defaultCellValue
+	}
+
+	return result, nil
+}
+
+//TODO: test
+func (store Store) GetValues(keys []string) (map[string]int, error) {
+	attrValues := BuildAllAttrValues(keys)
+	requestItems := BuildRequestItems(attrValues, store.Table())
+	input := BuildBGIInput(requestItems)
 	output, err := store.BatchGetItem(input)
 	if err != nil {
 		return nil, err
 	}
-	result := make(map[string]int)
-	err = FillMap(result, output, store.table)
-	if err != nil {
-		return nil, err
-	}
-	return result, store.SetAndFillUnprocessed(output.UnprocessedKeys, result)
-}
-
-func (store Store) SetAndFillUnprocessed(unprocessedKeys map[string]*dynamodb.KeysAndAttributes, m map[string]int) error {
-	for _, unprocessedKey := range unprocessedKeys[store.table].Keys {
-		key := *unprocessedKey["Key"].S
-		err := store.Set(key, defaultCellValue)
-		if err != nil {
-			return err
-		}
-		m[key] = defaultCellValue
-	}
-	return nil
+	return FillMap(output, store.Table())
 }
 
 func (store Store) GetOrSetCell(x int, y int) (int, error) {

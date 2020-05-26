@@ -19,8 +19,8 @@ func ConnectToFunes() (Store, error) {
 	if table == "" {
 		return Store{}, fmt.Errorf("Need to set env FUNES_TABLE!")
 	}
-	modifier := DynamoStoreModifier{client: *svc}
-	return Store{StoreModifier: modifier, table: table}, nil
+	modifier := DynamoStoreModifier{client: *svc, table: table}
+	return Store{StoreModifier: modifier}, nil
 }
 
 type dynamoItem struct {
@@ -41,11 +41,15 @@ type DynamoStoreModifier struct {
 	table  string
 }
 
+func (modifier DynamoStoreModifier) Table() string {
+	return modifier.table
+}
+
 func (modifier DynamoStoreModifier) Get(key string) (int, error) {
 	result, err := modifier.client.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(modifier.table),
+		TableName: aws.String(modifier.Table()),
 		Key: map[string]*dynamodb.AttributeValue{
-			"Key": {
+			"K": {
 				S: aws.String(key),
 			},
 		},
@@ -71,9 +75,9 @@ func (modifier DynamoStoreModifier) Set(key string, value int) error {
 				N: aws.String(vStr),
 			},
 		},
-		TableName: aws.String(modifier.table),
+		TableName: aws.String(modifier.Table()),
 		Key: map[string]*dynamodb.AttributeValue{
-			"Key": {
+			"K": {
 				S: aws.String(key),
 			},
 		},
@@ -100,7 +104,7 @@ func BuildAllAttrValues(keys []string) []map[string]*dynamodb.AttributeValue {
 
 func BuildAttrValue(key string) map[string]*dynamodb.AttributeValue {
 	return map[string]*dynamodb.AttributeValue{
-		"Key": &dynamodb.AttributeValue{
+		"K": &dynamodb.AttributeValue{
 			S: aws.String(key),
 		},
 	}
@@ -110,7 +114,7 @@ func BuildRequestItems(attrValues []map[string]*dynamodb.AttributeValue, tableNa
 	return map[string]*dynamodb.KeysAndAttributes{
 		tableName: {
 			Keys:                 attrValues,
-			ProjectionExpression: aws.String("V"),
+			ProjectionExpression: aws.String("V,K"),
 		},
 	}
 }
@@ -121,14 +125,15 @@ func BuildBGIInput(requestItems map[string]*dynamodb.KeysAndAttributes) *dynamod
 	}
 }
 
-func FillMap(m map[string]int, output *dynamodb.BatchGetItemOutput, tableName string) error {
+func FillMap(output *dynamodb.BatchGetItemOutput, tableName string) (map[string]int, error) {
+	result := map[string]int{}
 	for _, item := range output.Responses[tableName] {
-		key := *item["Key"].S
+		key := *item["K"].S
 		v, err := strconv.Atoi(*item["V"].N)
 		if err != nil {
-			return err
+			return result, err
 		}
-		m[key] = v
+		result[key] = v
 	}
-	return nil
+	return result, nil
 }
