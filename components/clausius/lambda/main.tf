@@ -75,7 +75,8 @@ data "aws_iam_policy_document" "hit_funes" {
 
     actions = [
       "dynamodb:GetItem",
-      "dynamodb:UpdateItem"
+      "dynamodb:UpdateItem",
+      "dynamodb:BatchGetItem"
     ]
 
     resources = [var.funes_table.arn]
